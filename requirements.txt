@@ -1,0 +1,12 @@
+ipdb
+tqdm
+xlrd
+pandas
+xlutils
+tabulate
+xlwt
+matplotlib
+numpy
+scikit_learn
+sktime==0.4.1
+easydict
