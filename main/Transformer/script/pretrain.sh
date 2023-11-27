@@ -1,0 +1,17 @@
+python src/main.py --task imputation \
+                   --output_dir output \
+                   --comment "pretraining through imputation" \
+                   --name BeijingPM25Quality_pretrained \
+                   --records_file Imputation_records.xls \
+                   --data_dir ./data/BeijingPM25Quality/ \
+                   --data_class tsra \
+                   --pattern TRAIN \
+                   --val_ratio 0.2 \
+                   --epochs 400 \
+                   --lr 0.001 \
+                   --batch_size 128 \
+                   --optimizer RAdam \
+                   --pos_encoding learnable \
+                   --shuffle False \
+                   --d_model 128 \
+                   --model transformer \
