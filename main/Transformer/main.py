@@ -9,7 +9,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-logger.info("Loading packages ...")
+logging.info("Loading packages ...")
 import os
 import sys
 
@@ -45,10 +45,10 @@ def main(config):
     total_start_time = time.time()
 
     # Add file logging besides stdout
-    file_handler = logging.FileHandler(os.path.join(config["output_dir"], "output.log"))
-    logger.addHandler(file_handler)
-
-    logger.info("Running:\n{}\n".format(" ".join(sys.argv)))  # command used to run
+    # file_handler = logging.FileHandler(os.path.join(config["output_dir"], "output.log"))
+    # logger.addHandler(file_handler)
+    utils.set_logger(os.path.join(config["output_dir"], config["log_path"]))
+    logging.info("Running:\n{}\n".format(" ".join(sys.argv)))  # command used to run
 
     if config["seed"] is not None:
         torch.manual_seed(config["seed"])
@@ -56,12 +56,12 @@ def main(config):
     device = torch.device(
         "cuda" if (torch.cuda.is_available() and config["gpu"] != "-1") else "cpu"
     )
-    logger.info("Using device: {}".format(device))
+    logging.info("Using device: {}".format(device))
     if device == "cuda":
-        logger.info("Device index: {}".format(torch.cuda.current_device()))
+        logging.info("Device index: {}".format(torch.cuda.current_device()))
 
     # Build data
-    logger.info("Loading and preprocessing data ...")
+    logging.info("Loading and preprocessing data ...")
     data_class = data_factory[config["data_class"]]
     my_data = data_class(
         config["data_dir"],
@@ -103,7 +103,7 @@ def main(config):
             test_indices = [int(ind) for ind in test_indices]  # integer indices
         except ValueError:
             pass  # in case indices are non-integers
-        logger.info(
+        logging.info(
             "Loaded {} test IDs from file: '{}'".format(
                 len(test_indices), config["test_from"]
             )
@@ -143,9 +143,9 @@ def main(config):
         if test_indices is None:
             test_indices = []
 
-    logger.info("{} samples may be used for training".format(len(train_indices)))
-    logger.info("{} samples will be used for validation".format(len(val_indices)))
-    logger.info("{} samples will be used for testing".format(len(test_indices)))
+    logging.info("{} samples may be used for training".format(len(train_indices)))
+    logging.info("{} samples will be used for validation".format(len(val_indices)))
+    logging.info("{} samples will be used for testing".format(len(test_indices)))
 
     with open(os.path.join(config["output_dir"], "data_indices.json"), "w") as f:
         try:
@@ -197,7 +197,7 @@ def main(config):
                 test_data.feature_df.loc[test_indices]
             )
 
-    logger.info("Save dataframes")
+    logging.info("Save dataframes")
 
     save_dir = glob(config["data_dir"])[0]
 
@@ -231,7 +231,7 @@ def main(config):
         )
 
     # Create model
-    logger.info("Creating model ...")
+    logging.info("Creating model ...")
     model = model_factory(config, my_data)
 
     if config["freeze"]:
@@ -241,9 +241,9 @@ def main(config):
             else:
                 param.requires_grad = False
 
-    logger.info("Model:\n{}".format(model))
-    logger.info("Total number of parameters: {}".format(utils.count_parameters(model)))
-    logger.info(
+    logging.info("Model:\n{}".format(model))
+    logging.info("Total number of parameters: {}".format(utils.count_parameters(model)))
+    logging.info(
         "Trainable parameters: {}".format(utils.count_parameters(model, trainable=True))
     )
 
@@ -304,7 +304,7 @@ def main(config):
         print_str = "Test Summary: "
         for k, v in aggr_metrics_test.items():
             print_str += "{}: {:8f} | ".format(k, v)
-        logger.info(print_str)
+        logging.info(print_str)
         return
 
     # Initialize data generators
@@ -367,7 +367,7 @@ def main(config):
     metrics_names, metrics_values = zip(*aggr_metrics_val.items())
     metrics.append(list(metrics_values))
 
-    logger.info("Starting training...")
+    logging.info("Starting training...")
     for epoch in tqdm(
         range(start_epoch + 1, config["epochs"] + 1), desc="Training Epoch", leave=False
     ):
@@ -382,8 +382,8 @@ def main(config):
         for k, v in aggr_metrics_train.items():
             tensorboard_writer.add_scalar("{}/train".format(k), v, epoch)
             print_str += "{}: {:8f} | ".format(k, v)
-        logger.info(print_str)
-        logger.info(
+        logging.info(print_str)
+        logging.info(
             "Epoch runtime: {} hours, {} minutes, {} seconds\n".format(
                 *utils.readable_time(epoch_runtime)
             )
@@ -392,13 +392,13 @@ def main(config):
         avg_epoch_time = total_epoch_time / (epoch - start_epoch)
         avg_batch_time = avg_epoch_time / len(train_loader)
         avg_sample_time = avg_epoch_time / len(train_dataset)
-        logger.info(
+        logging.info(
             "Avg epoch train. time: {} hours, {} minutes, {} seconds".format(
                 *utils.readable_time(avg_epoch_time)
             )
         )
-        logger.info("Avg batch train. time: {} seconds".format(avg_batch_time))
-        logger.info("Avg sample train. time: {} seconds".format(avg_sample_time))
+        logging.info("Avg batch train. time: {} seconds".format(avg_batch_time))
+        logging.info("Avg sample train. time: {} seconds".format(avg_sample_time))
 
         # evaluate if first or last epoch or at specified interval
         if (
@@ -437,7 +437,7 @@ def main(config):
                 lr_step < len(config["lr_step"]) - 1
             ):  # so that this index does not get out of bounds
                 lr_step += 1
-            logger.info("Learning rate updated to: ", lr)
+            logging.info("Learning rate updated to: ", lr)
             for param_group in optimizer.param_groups:
                 param_group["lr"] = lr
 
@@ -465,15 +465,15 @@ def main(config):
         comment=config["comment"],
     )
 
-    logger.info(
+    logging.info(
         "Best {} was {}. Other metrics: {}".format(
             config["key_metric"], best_value, best_metrics
         )
     )
-    logger.info("All Done!")
+    logging.info("All Done!")
 
     total_runtime = time.time() - total_start_time
-    logger.info(
+    logging.info(
         "Total runtime: {} hours, {} minutes, {} seconds\n".format(
             *utils.readable_time(total_runtime)
         )
