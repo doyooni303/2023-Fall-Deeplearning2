@@ -1,3 +1,7 @@
-# 파일
+# folder
+output/*
+
+# file
 *.ipynb
 *.pyc
+*.xls
