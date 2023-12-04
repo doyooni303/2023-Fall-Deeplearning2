@@ -1,17 +1,16 @@
-python src/main.py --output_dir output \
-                   --comment "regression from Scratch" \
-                   --name BeijingPM25Quality_fromScratch_Regression \
-                   --records_file Regression_records.xlsx \
-                   --data_dir ./data/BeijingPM25Quality/ \
+# if mode is test, load_model must exist
+python main.py --output_dir output \
+                   --log_path logging.log \
+                   --mode test \
+                   --load_model model_best.pth \
+                   --name $name \
+                   --no_timestamp \
+                   --records_file Regression_test_records.xls \
+                   --data_dir ./BeijingPM25Quality/ \
                    --data_class tsra \
-                   --pattern TRAIN \
-                   --val_ratio 0.2 \
-                   --epochs 200 \
-                   --lr 0.001 \
-                   --batch_size 32 \
-                   --optimizer RAdam \
-                   --pos_encoding learnable \
+                   --test_pattern TEST \
+                   --batch_size 256 \
                    --task regression \
-                   --shuffle False \
-                   --d_model 128 \
                    --model transformer \
+
+done

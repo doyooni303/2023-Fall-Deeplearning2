@@ -1,5 +1,6 @@
 # folder
 output/*
+__pycache__/*
 
 # file
 *.ipynb

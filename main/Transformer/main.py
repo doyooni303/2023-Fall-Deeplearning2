@@ -266,9 +266,15 @@ def main(config):
     lr = config["lr"]  # current learning step
     # Load model and optimizer state
     if args.load_model:
+        model_path = os.path.join(
+            config["output_dir"],
+            # config["experiment_name"],
+            "checkpoints",
+            config["load_model"],
+        )
         model, optimizer, start_epoch = utils.load_model(
             model,
-            config["load_model"],
+            model_path,
             optimizer,
             config["resume"],
             config["change_output"],
@@ -280,7 +286,7 @@ def main(config):
 
     loss_module = get_loss_module(config)
 
-    if config["test_only"] == "testset":  # Only evaluate and skip training
+    if config["mode"] == "test":  # Only evaluate and skip training
         dataset_class, collate_fn, runner_class = pipeline_factory(config)
         test_dataset = dataset_class(test_data, test_indices)
 
@@ -305,6 +311,9 @@ def main(config):
         for k, v in aggr_metrics_test.items():
             print_str += "{}: {:8f} | ".format(k, v)
         logging.info(print_str)
+
+        # Export record metrics to a file accumulating records from all experiments
+        utils.register_record(config, best_metrics=aggr_metrics_test)
         return
 
     # Initialize data generators
@@ -445,25 +454,54 @@ def main(config):
         if config["harden"] and check_progress(epoch):
             train_loader.dataset.update()
             val_loader.dataset.update()
-
-    # Export evolution of metrics over epochs
+        # Export evolution of metrics over epochs
     header = metrics_names
     metrics_filepath = os.path.join(
         config["output_dir"], "metrics_" + config["experiment_name"] + ".xls"
     )
-    book = utils.export_performance_metrics(
-        metrics_filepath, metrics, header, sheet_name="metrics"
-    )
 
-    # Export record metrics to a file accumulating records from all experiments
-    utils.register_record(
-        config["records_file"],
-        config["initial_timestamp"],
-        config["experiment_name"],
-        best_metrics,
-        aggr_metrics_val,
-        comment=config["comment"],
-    )
+    # Test after training
+    if config["mode"] == "train_test":
+        dataset_class, collate_fn, runner_class = pipeline_factory(config)
+        test_dataset = dataset_class(test_data, test_indices)
+
+        test_loader = DataLoader(
+            dataset=test_dataset,
+            batch_size=config["batch_size"],
+            shuffle=False,
+            num_workers=config["num_workers"],
+            pin_memory=True,
+            collate_fn=lambda x: collate_fn(x, max_len=model.max_len),
+        )
+        test_evaluator = runner_class(
+            model,
+            test_loader,
+            device,
+            loss_module,
+            print_interval=config["print_interval"],
+            console=config["console"],
+        )
+        aggr_metrics_test, per_batch_test = test_evaluator.evaluate(keep_all=True)
+        print_str = "Test Summary: "
+        for k, v in aggr_metrics_test.items():
+            print_str += "{}: {:8f} | ".format(k, v)
+        logging.info(print_str)
+
+        test_metrics = aggr_metrics_test.copy()
+
+        # Export record metrics to a file accumulating records from all experiments
+        utils.register_record(
+            config,
+            best_metrics=best_metrics,
+            test_metrics=test_metrics,
+        )
+
+    elif config["mode"] == "train":
+        # Export record metrics to a file accumulating records from all experiments
+        utils.register_record(
+            config,
+            best_metrics=best_metrics,
+        )
 
     logging.info(
         "Best {} was {}. Other metrics: {}".format(
