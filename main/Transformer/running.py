@@ -84,11 +84,19 @@ def setup(args):
     """
 
     config = args.__dict__  # configuration dictionary
-
-    if args.config_filepath is not None:
+    if (args.config_filepath is not None) & (config["mode"] == "test"):
         logger.info("Reading configuration ...")
         try:  # dictionary containing the entire configuration settings in a hierarchical fashion
             config.update(utils.load_config(args.config_filepath))
+            config.update(
+                {
+                    "test_pattern": config["test_pattern"],
+                    "mode": config["mode"],
+                    "epochs": config["epochs"],
+                    "records_file": config["records_file"],
+                }
+            )
+            return config
         except:
             logger.critical(
                 "Failed to load configuration file. Check JSON syntax and verify that files exist"
@@ -96,25 +104,37 @@ def setup(args):
             traceback.print_exc()
             sys.exit(1)
 
+    os.makedirs(config["output_dir"], exist_ok=True)
     # Create output directory
-    initial_timestamp = datetime.now(timezone("Asia/Seoul"))
-    output_dir = config["output_dir"]
+
     # if not os.path.isdir(output_dir):
     #     raise IOError(
     #         "Root directory '{}', where the directory of the experiment will be created, must exist".format(output_dir))
 
-    os.makedirs(output_dir, exist_ok=True)
+    # comment setup
+    comment = ""
+    for key in ["shuffle", "num_layers", "d_model", "lr"]:
+        if config[key] is not None:
+            comment += f"{key}_{config[key]}_"
+    config["comment"] = comment
 
-    output_dir = os.path.join(output_dir, config["experiment_name"])
+    output_dir = os.path.join(
+        config["output_dir"], "_".join([config["experiment_name"], config["comment"]])
+    )
+    os.environ["TZ"] = "Asia/Seoul"
+    time.tzset()
+
+    initial_timestamp = datetime.now(timezone("Asia/Seoul"))
     formatted_timestamp = initial_timestamp.strftime("%y%m%d_%H-%M-%S")
     config["initial_timestamp"] = formatted_timestamp
-    if (not config["no_timestamp"]) or (len(config["experiment_name"]) == 0):
-        rand_suffix = "".join(random.choices(string.ascii_letters + string.digits, k=3))
-        output_dir += "_" + formatted_timestamp + "_" + rand_suffix
-    config["output_dir"] = output_dir
+    # if (not config["no_timestamp"]) or (len(config["experiment_name"]) == 0):
+    #     rand_suffix = "".join(random.choices(string.ascii_letters + string.digits, k=3))
+    #     output_dir += "_" + formatted_timestamp + "_" + rand_suffix
+    # config["output_dir"] = output_dir
     config["save_dir"] = os.path.join(output_dir, "checkpoints")
     config["pred_dir"] = os.path.join(output_dir, "predictions")
     config["tensorboard_dir"] = os.path.join(output_dir, "tb_summaries")
+
     utils.create_dirs(
         [config["save_dir"], config["pred_dir"], config["tensorboard_dir"]]
     )
@@ -122,7 +142,6 @@ def setup(args):
     # Save configuration as a (pretty) json file
     with open(os.path.join(output_dir, "configuration.json"), "w") as fp:
         json.dump(config, fp, indent=4, sort_keys=True)
-
     logger.info("Stored configuration file in '{}'".format(output_dir))
 
     return config
@@ -555,59 +574,69 @@ class SupervisedRunner(BaseRunner):
             "metrics": [],
             "IDs": [],
         }
-        for i, batch in enumerate(self.dataloader):
-            X, targets, padding_masks, IDs = batch
-            targets = targets.to(self.device)
-            padding_masks = padding_masks.to(self.device)  # 0s: ignore
-            # regression: (batch_size, num_labels); classification: (batch_size, num_classes) of logits
-            predictions = self.model(X.to(self.device), padding_masks)
+        with torch.no_grad():
+            for i, batch in enumerate(self.dataloader):
+                X, targets, padding_masks, IDs = batch
+                targets = targets.to(self.device)
+                padding_masks = padding_masks.to(self.device)  # 0s: ignore
+                # regression: (batch_size, num_labels); classification: (batch_size, num_classes) of logits
+                predictions = self.model(X.to(self.device), padding_masks)
 
-            loss = self.loss_module(
-                predictions, targets
-            )  # (batch_size,) loss for each sample in the batch
-            batch_loss = torch.sum(loss).cpu().item()
-            mean_loss = batch_loss / len(loss)  # mean loss (over samples)
+                loss = self.loss_module(
+                    predictions, targets
+                )  # (batch_size,) loss for each sample in the batch
+                batch_loss = torch.sum(loss).cpu().item()
+                mean_loss = batch_loss / len(loss)  # mean loss (over samples)
 
-            if self.classification:
-                per_batch["targets"].append(targets.cpu().numpy())
-                per_batch["predictions"].append(predictions.cpu().numpy())
+                if self.classification:
+                    per_batch["targets"].append(targets.cpu().numpy())
+                    per_batch["predictions"].append(predictions.cpu().numpy())
 
-            else:
-                per_batch["targets"].append(self.flat_list(targets.cpu().tolist()))
-                per_batch["predictions"].append(
-                    self.flat_list(predictions.cpu().tolist())
-                )
+                else:
+                    per_batch["targets"].append(self.flat_list(targets.cpu().tolist()))
+                    per_batch["predictions"].append(
+                        self.flat_list(predictions.cpu().tolist())
+                    )
 
-            per_batch["metrics"].append(loss.cpu().numpy())
-            per_batch["IDs"].append(IDs)
+                per_batch["metrics"].append(loss.cpu().numpy())
+                per_batch["IDs"].append(IDs)
 
-            metrics = {"loss": mean_loss}
-            if i % self.print_interval == 0:
-                ending = "" if epoch_num is None else "Epoch {} ".format(epoch_num)
-                self.print_callback(i, metrics, prefix="Evaluating " + ending)
+                metrics = {"loss": mean_loss}
+                if i % self.print_interval == 0:
+                    ending = "" if epoch_num is None else "Epoch {} ".format(epoch_num)
+                    self.print_callback(i, metrics, prefix="Evaluating " + ending)
 
-            total_samples += len(loss)
-            epoch_loss += batch_loss  # add total loss of batch
+                total_samples += len(loss)
+                epoch_loss += batch_loss  # add total loss of batch
 
         epoch_loss = (
             epoch_loss / total_samples
         )  # average loss per element for whole epoch
-        self.epoch_metrics["epoch"] = epoch_num
+        self.epoch_metrics["epoch"] = epoch_num if epoch_num is not None else 0
         self.epoch_metrics["loss"] = epoch_loss
 
         if not self.classification:
-            self.epoch_metrics["MAE"] = MAE(
-                self.flat_list(per_batch["targets"]),
-                self.flat_list(per_batch["predictions"]),
+            self.epoch_metrics["MAE"] = round(
+                MAE(
+                    self.flat_list(per_batch["targets"]),
+                    self.flat_list(per_batch["predictions"]),
+                ),
+                2,
             )
-            self.epoch_metrics["MAPE"] = MAPE(
-                self.flat_list(per_batch["targets"]),
-                self.flat_list(per_batch["predictions"]),
+            self.epoch_metrics["MAPE"] = round(
+                MAPE(
+                    self.flat_list(per_batch["targets"]),
+                    self.flat_list(per_batch["predictions"]),
+                ),
+                4,
             )
-            self.epoch_metrics["RMSE"] = RMSE(
-                self.flat_list(per_batch["targets"]),
-                self.flat_list(per_batch["predictions"]),
-                squared=False,
+            self.epoch_metrics["RMSE"] = round(
+                RMSE(
+                    self.flat_list(per_batch["targets"]),
+                    self.flat_list(per_batch["predictions"]),
+                    squared=False,
+                ),
+                2,
             )
 
         else:

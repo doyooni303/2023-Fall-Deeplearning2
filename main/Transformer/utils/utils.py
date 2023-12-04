@@ -204,25 +204,33 @@ def export_record(filepath, values):
     work_book.save(filepath)
 
 
-def register_record(
-    filepath, timestamp, experiment_name, best_metrics, final_metrics=None, comment=""
-):
+def register_record(config, best_metrics, test_metrics=None):
     """
-    Adds the best and final metrics of a given experiment as a record in an excel sheet with other experiment records.
+    Adds the best and test metrics of a given experiment as a record in an excel sheet with other experiment records.
     Creates excel sheet if it doesn't exist.
     Args:
         filepath: path of excel file keeping records
         timestamp: string
         experiment_name: string
         best_metrics: dict of metrics at best epoch {metric_name: metric_value}. Includes "epoch" as first key
-        final_metrics: dict of metrics at final epoch {metric_name: metric_value}. Includes "epoch" as first key
+        test_metrics: dict of metrics at test epoch {metric_name: metric_value}. Includes "epoch" as first key
         comment: optional description
     """
+    filepath = config["records_file"]
+    timestamp = config["initial_timestamp"]
+    experiment_name = config["experiment_name"]
+    shuffle = config["shuffle"]
+    lr = config["lr"]
+    d_model = config["d_model"]
+    num_layers = config["num_layers"]
+
     metrics_names, metrics_values = zip(*best_metrics.items())
-    row_values = [timestamp, experiment_name, comment] + list(metrics_values)
-    if final_metrics is not None:
-        final_metrics_names, final_metrics_values = zip(*final_metrics.items())
-        row_values += list(final_metrics_values)
+    row_values = [timestamp, experiment_name, shuffle, lr, d_model, num_layers] + list(
+        metrics_values
+    )
+    if test_metrics is not None:
+        test_metrics_names, test_metrics_values = zip(*test_metrics.items())
+        row_values += list(test_metrics_values)
 
     if not os.path.exists(filepath):  # Create a records file for the first time
         logger.warning(
@@ -231,9 +239,12 @@ def register_record(
         directory = os.path.dirname(filepath)
         if len(directory) and not os.path.exists(directory):
             os.makedirs(directory)
-        header = ["Timestamp", "Name", "Comment"] + ["Best " + m for m in metrics_names]
-        if final_metrics is not None:
-            header += ["Final " + m for m in final_metrics_names]
+
+        header = ["Timestamp", "Name", "Shuffle", "LR", "d_model", "Num Layers"] + [
+            "Best " + m for m in metrics_names
+        ]
+        if test_metrics is not None:
+            header += ["Test " + m for m in test_metrics_names]
         book = xlwt.Workbook()  # excel work book
         book = write_table_to_sheet([header, row_values], book, sheet_name="records")
         book.save(filepath)

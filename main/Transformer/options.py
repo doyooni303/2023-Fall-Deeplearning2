@@ -63,7 +63,7 @@ class Options(object):
         )
         self.parser.add_argument(
             "--records_file",
-            default="./records.xls",
+            default="./records.xlsx",
             help="Excel file keeping all records of experiments",
         )
         # System
@@ -107,9 +107,9 @@ class Options(object):
             "otherwise as an integer absolute number of samples",
         )
         self.parser.add_argument(
-            "--test_only",
-            choices={"testset", "fold_transduction"},
-            help="If set, no training will take place; instead, trained model will be loaded and evaluated on test set",
+            "--mode",
+            choices={"train", "test", "train_test"},
+            help="Whether to perform only train, test or both",
         )
         self.parser.add_argument(
             "--data_class",
