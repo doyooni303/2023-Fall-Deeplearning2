@@ -1,2 +1,7 @@
 # data folder
 ./data/*.csv
+
+*.csv
+*.png
+*.jpg
+*.pt
