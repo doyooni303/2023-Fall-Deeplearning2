@@ -7,11 +7,13 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 from itertools import product
+import warnings
+warnings.filterwarnings('ignore')
 
 from datasets import make_dataloader
 from utils.utils import parser, return_result, visualization_loss_history
-from tasks.train_test import Train_Test
-from rnn import RNN_model
+from tasks.train_test import Train_Test, Train_Test_Attention
+from rnn import RNN_model, RNN_Attention
 
 def main(args):
     # seed
@@ -31,41 +33,76 @@ def main(args):
     input_size = 9
     hidden_size = args.hidden_size
     num_layers = args.num_layers
+    learning_rate = args.lr
+    dropout = args.dropout
+    # weight_decay = args.weight_decay
     bidirectional = args.bidirectional
+    attention = args.attention
+    layer_norm = args.layer_norm
     num_epochs = args.num_epochs
     device = torch.device("cuda:0" if torch.cuda.is_available() else 'cpu') 
     best_model_path = os.path.join(args.ckpt_dir, rnn_type)
 
     ## Modeling
-    model = RNN_model(input_size, hidden_size, num_layers, bidirectional, rnn_type, device)
+    if attention:
+        model = RNN_Attention(input_size, hidden_size, num_layers, bidirectional, rnn_type, dropout, layer_norm, device)
+    else:
+        model = RNN_model(input_size, hidden_size, num_layers, bidirectional, rnn_type, dropout, layer_norm, device)
     model = model.to(device)
 
     # Training and Save Weights(Parameters)
     dataloaders_dict = {'train': train_loader, 'val': valid_loader}
 
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    trainer = Train_Test(train_loader, valid_loader, test_loader, input_size, device)
-    best_model, train_loss_history, val_loss_history = trainer.train(model, dataloaders_dict, criterion, num_epochs, optimizer)
+    if attention:
+        trainer = Train_Test_Attention(train_loader, valid_loader, test_loader, input_size, device)
+        best_model, train_loss_history, val_loss_history, attn_scores = trainer.train(model, dataloaders_dict, criterion, num_epochs, optimizer)
+    else:
+        trainer = Train_Test(train_loader, valid_loader, test_loader, input_size, device)
+        best_model, train_loss_history, val_loss_history = trainer.train(model, dataloaders_dict, criterion, num_epochs, optimizer)
 
     os.makedirs(os.path.join(args.ckpt_dir, rnn_type), exist_ok=True)
     torch.save(best_model.state_dict(), os.path.join(best_model_path, f'{hidden_size}_{num_layers}_{bidirectional}.pt'))
 
     visualization_loss_history(args, best_model_path, train_loss_history, val_loss_history)
 
-    ## Evaluation
+    # Evaluation
     model.load_state_dict(torch.load(os.path.join(best_model_path, f'{hidden_size}_{num_layers}_{bidirectional}.pt')))    # Load model weights(Parameters)
 
-    y_pred, y_true, mse = trainer.test(model, test_loader)
+    if attention:
+        y_pred, y_true, mse, attn_scores = trainer.test(model, test_loader)
+    else:
+        y_pred, y_true, mse = trainer.test(model, test_loader)
+
     y_true = np.array(y_true)
 
     performance = return_result(args, y_true, y_pred)
+
+    print()
 
 
 if __name__ == "__main__":
     args = parser().parse_args()
 
+    args.shuffle = False
+
+    args.rnn_type = 'gru'
+    args.hidden_size = 256
+    args.num_layers = 1
+    args.lr = 0.0001
+    args.dropout = 0.1
+    args.bidirectional = False
+    args.attention = False
+    args.layer_norm = True
+    args.num_epochs = 500
+    args.batch_size = 256
+
+
+    main(args)
+
+    '''
     rnn_type = ['rnn', 'lstm', 'gru']
     hidden_size = [16, 32, 64, 128]
     num_layers = [1,2]
@@ -82,3 +119,4 @@ if __name__ == "__main__":
         args.num_epochs = c[4]
 
         main(args)
+    '''

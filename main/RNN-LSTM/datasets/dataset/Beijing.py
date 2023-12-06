@@ -37,18 +37,18 @@ class BeijingDataset(Dataset):
     def split_windowing(self, window_size=24, shift_size=24):
         if self.phase == "train":
             if self.shuffle:
-                data = pd.read_csv(os.path.join(self.data_dir, 'train_True_df.csv'))
+                data = pd.read_csv(os.path.join(self.data_dir, 'train_True_df.csv'), index_col=0)
             else:
-                data = pd.read_csv(os.path.join(self.data_dir, 'train_False_df.csv'))
+                data = pd.read_csv(os.path.join(self.data_dir, 'train_False_df.csv'), index_col=0)
         elif self.phase == 'valid':
             if self.shuffle:
-                data = pd.read_csv(os.path.join(self.data_dir, 'valid_True_df.csv'))
+                data = pd.read_csv(os.path.join(self.data_dir, 'valid_True_df.csv'), index_col=0)
             else:
-                data = pd.read_csv(os.path.join(self.data_dir, 'valid_False_df.csv'))
+                data = pd.read_csv(os.path.join(self.data_dir, 'valid_False_df.csv'), index_col=0)
         elif self.phase == "test":
-            data = pd.read_csv(os.path.join(self.data_dir, 'test_df.csv'))
+            data = pd.read_csv(os.path.join(self.data_dir, 'test_df.csv'), index_col=0)
 
-        x = data.drop(['Unnamed: 0', 'labels'], axis=1)
+        x = data.drop(['labels'], axis=1)
         y = data[['labels']]
 
         try:

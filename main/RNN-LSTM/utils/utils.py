@@ -19,7 +19,12 @@ def parser():
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--hidden_size', type=int, default=64)
     parser.add_argument('--num_layers', type=int, default=1)
+    parser.add_argument('--lr', type=float, default=0.0001)
+    parser.add_argument('--dropout', type=float, default=0.1)
+    # parser.add_argument('--weight_decay', type=float, default=0.0001)
     parser.add_argument('--bidirectional', action='store_true')
+    parser.add_argument('--attention', action='store_true')
+    parser.add_argument('--layer_norm', action='store_true')
     parser.add_argument('--num_epochs', type=int, default=1000)
     parser.add_argument('--rnn_type', type=str, default='rnn', choices=['rnn','lstm','gru'])
     
