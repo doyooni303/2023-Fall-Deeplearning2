@@ -8,10 +8,10 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/main/RNN-LSTM/main.py",
+            "program": "${workspaceFolder}/main/RNN/main.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "cwd": "${workspaceFolder}/main/RNN-LSTM"
+            "cwd": "${workspaceFolder}/main/RNN"
         }
     ]
 }
