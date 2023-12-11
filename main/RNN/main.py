@@ -55,22 +55,23 @@ def main(args):
     dataloaders_dict = {'train': train_loader, 'val': valid_loader}
 
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.AdamW(model.parameters(), lr=learning_rate)   # Adam or Adamw
 
     if attention:
         trainer = Train_Test_Attention(train_loader, valid_loader, test_loader, input_size, device)
-        best_model, train_loss_history, val_loss_history, attn_scores = trainer.train(model, dataloaders_dict, criterion, num_epochs, optimizer)
     else:
         trainer = Train_Test(train_loader, valid_loader, test_loader, input_size, device)
-        best_model, train_loss_history, val_loss_history, best_epoch = trainer.train(model, dataloaders_dict, criterion, num_epochs, optimizer)
+    best_model, train_loss_history, val_loss_history, best_epoch = trainer.train(model, dataloaders_dict, criterion, num_epochs, optimizer)
 
     os.makedirs(os.path.join(args.ckpt_dir, rnn_type), exist_ok=True)
-    torch.save(best_model.state_dict(), os.path.join(best_model_path, f'{hidden_size}_{num_layers}_{bidirectional}.pt'))
+    best_model_ckpt = os.path.join(best_model_path, f'{args.shuffle, args.rnn_type, args.attention, args.hidden_size, args.num_layers, args.lr, args.bidirectional, args.dropout}')
 
-    visualization_loss_history(args, best_model_path, train_loss_history, val_loss_history)
+    torch.save(best_model.state_dict(), f'{best_model_ckpt}.pt')
+
+    visualization_loss_history(args, best_model_path, train_loss_history, val_loss_history, best_model_ckpt)
 
     # Evaluation
-    model.load_state_dict(torch.load(os.path.join(best_model_path, f'{hidden_size}_{num_layers}_{bidirectional}.pt')))    # Load model weights(Parameters)
+    model.load_state_dict(torch.load(f'{best_model_ckpt}.pt'))    # Load model weights(Parameters)
 
     if attention:
         y_pred, y_true, mse, attn_scores = trainer.test(model, test_loader)
@@ -84,20 +85,20 @@ if __name__ == "__main__":
     args = parser().parse_args()
 
     args.num_epochs = 500
-    args.batch_size = 64
+    args.batch_size = 128
 
-    args.attention = False
+    args.attention = True
     args.layer_norm = True
 
     shuffle = [False, True]
-    rnn_type = ['rnn', 'lstm', 'gru']
-    hidden_size = [32, 64, 128, 256]
+    rnn_type = ['gru']
+    hidden_size = [64, 128, 256]
     num_layers = [1,2]
-    learning_rate = [0.001, 0.0001, 0.00001]
-    bidirectional = [True, False]
-    dropout = [0.1, 0.2]
+    learning_rate = [0.01, 0.001, 0.0001,]
+    # bidirectional = [True, False]
+    dropout = [0, 0.2]
 
-    combinations = list(product(shuffle, rnn_type, hidden_size, num_layers, learning_rate, bidirectional, dropout))
+    combinations = list(product(shuffle, rnn_type, hidden_size, num_layers, learning_rate, dropout))
 
     for c in tqdm(combinations):
         args.shuffle = c[0]
@@ -105,7 +106,6 @@ if __name__ == "__main__":
         args.hidden_size = c[2]
         args.num_layers = c[3]
         args.lr = c[4]
-        args.bidirectional = c[5]
-        args.dropout = c[6]
+        args.dropout = c[5]
 
         main(args)

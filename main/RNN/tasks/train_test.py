@@ -200,7 +200,6 @@ class Train_Test_Attention():
                     # forward
                     # training 단계에서만 gradient 업데이트 수행
                     with torch.set_grad_enabled(phase == 'train'):
-
                         # input을 model에 넣어 output을 도출한 후, loss를 계산함
                         outputs, attn_scores = model(inputs)
                         
@@ -223,6 +222,7 @@ class Train_Test_Attention():
 
                 # validation 단계에서 validation loss가 감소할 때마다 best model 가중치를 업데이트함
                 if phase == 'val' and epoch_loss < best_loss:
+                    best_epoch = epoch
                     best_loss = epoch_loss
                     best_model_wts = copy.deepcopy(model.state_dict())
                 if phase == 'train':
@@ -237,7 +237,8 @@ class Train_Test_Attention():
 
         # validation loss가 가장 낮았을 때의 best model 가중치를 불러와 best model을 구축함
         model.load_state_dict(best_model_wts)
-        return model, train_loss_history, val_loss_history, attn_scores
+
+        return model, train_loss_history, val_loss_history, best_epoch  # , attn_scores
 
     def test(self, model, test_loader):
         """

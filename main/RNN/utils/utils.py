@@ -9,7 +9,7 @@ def parser():
     parser = argparse.ArgumentParser()
     
     # Data/Results
-    parser.add_argument('--data_dir', type=str, default='./data/')
+    parser.add_argument('--data_dir', type=str, default='/workspace/data/')
     parser.add_argument('--ckpt_dir', type=str, default="./ckpt/")
     parser.add_argument('--output_dir', type=str, default="./results/")
 
@@ -30,8 +30,6 @@ def parser():
     parser.add_argument('--attention', action='store_true')
     parser.add_argument('--layer_norm', action='store_true')
 
-
-    
     return parser
 
 def return_result(args, y_true, y_pred, best_epoch):
@@ -68,7 +66,7 @@ def return_result(args, y_true, y_pred, best_epoch):
 
     return performance
 
-def visualization_loss_history(args, best_model_path, train_loss_history, val_loss_history):
+def visualization_loss_history(args, best_model_path, train_loss_history, val_loss_history, best_model_ckpt):
     plt.figure(figsize=(8,5))
     plt.title('Loss History')
     plt.plot(range(args.num_epochs), train_loss_history, c='blue', label='Train Loss')
@@ -76,7 +74,7 @@ def visualization_loss_history(args, best_model_path, train_loss_history, val_lo
     plt.legend()
     plt.xlabel('epoch')
     plt.ylabel('loss')
-    plt.savefig(os.path.join(best_model_path, f"{args.hidden_size}_{args.num_layers}_{args.bidirectional}.jpg"))
+    plt.savefig(f"{best_model_ckpt}.jpg")
 
 # def save_predictions(args, key, labels, preds):
 #     labels = pd.Series(labels[labels.columns[0]], name='Real')

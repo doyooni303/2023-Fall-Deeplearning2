@@ -103,10 +103,7 @@ class RNN_Attention(nn.Module):
         self.fc = nn.Linear(self.hidden_size * self.num_directions, 1)
 
     def forward(self, x):
-        batch_size, _, seq_len = x.shape
-        
-        # data dimension: (batch_size x input_size x seq_len) -> (batch_size x seq_len x input_size)로 변환
-        # x = torch.transpose(x, 1, 2)
+        batch_size, seq_len, input_size  = x.shape
         
         # initial hidden states 설정
         h0 = torch.zeros(self.num_layers * self.num_directions, batch_size, self.hidden_size).to(self.device)
@@ -116,13 +113,16 @@ class RNN_Attention(nn.Module):
             out, hidden = self.rnn(x, h0)  # out: tensor of shape (batch_size, seq_length, hidden_size)
         else:
             # initial cell states 설정
-            c0 = torch.zeros(self.num_directions * self.num_layers, x.size(0), self.hidden_size).to(self.device)
+            c0 = torch.zeros(self.num_directions * self.num_layers, batch_size, self.hidden_size).to(self.device)
             out, hidden = self.rnn(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size)
         
         if self.layer_norm:
             out = self.layer_norm(out)
         
-        final_state = hidden.view(self.num_layers, self.num_directions, batch_size, self.hidden_size)[-1]
+        if self.rnn_type in ['rnn', 'gru']:
+            final_state = hidden.view(self.num_layers, self.num_directions, batch_size, self.hidden_size)[-1]
+        else:
+            final_state = hidden[0].view(self.num_layers, self.num_directions, batch_size, self.hidden_size)[-1]
         
         # Handle directions
         final_hidden_state = None

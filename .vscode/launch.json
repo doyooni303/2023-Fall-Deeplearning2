@@ -11,7 +11,7 @@
             "program": "${workspaceFolder}/main/RNN/main.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "cwd": "${workspaceFolder}/main/RNN"
+            "cwd": "${workspaceFolder}/main/RNN",
         }
     ]
 }
