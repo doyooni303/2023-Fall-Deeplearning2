@@ -7,7 +7,7 @@ def make_dataloader(args: argparse, **kwargs: dict):
     train_set = BeijingDataset(args, phase="train")
     train_loader = DataLoader(train_set,
                               batch_size=args.batch_size,
-                              shuffle=True)
+                              shuffle=False)
     
     valid_set = BeijingDataset(args, phase="valid")
     valid_loader = DataLoader(valid_set,
