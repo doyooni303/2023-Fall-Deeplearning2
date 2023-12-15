@@ -51,6 +51,12 @@ class Options(object):
             help="A string identifier/name for the experiment to be run - it will be appended to the output directory name, before the timestamp",
         )
         self.parser.add_argument(
+            "--date",
+            type=str,
+            default="",
+            help="Experiment date",
+        )
+        self.parser.add_argument(
             "--comment",
             type=str,
             default="",
@@ -263,8 +269,14 @@ class Options(object):
         self.parser.add_argument(
             "--val_interval",
             type=int,
-            default=2,
+            default=1,
             help="Evaluate on validation set every this many epochs. Must be >= 1.",
+        )
+        self.parser.add_argument(
+            "--loss_dict_path",
+            type=str,
+            default="./loss_train_valid.csv",
+            help="To track the loss of training and validtion.",
         )
         self.parser.add_argument(
             "--optimizer", choices={"Adam", "RAdam"}, default="Adam", help="Optimizer"

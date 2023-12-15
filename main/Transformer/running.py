@@ -103,7 +103,7 @@ def setup(args):
             )
             traceback.print_exc()
             sys.exit(1)
-
+    config["output_dir"] = f"{config['date']}_{config['output_dir']}"
     os.makedirs(config["output_dir"], exist_ok=True)
     # Create output directory
 

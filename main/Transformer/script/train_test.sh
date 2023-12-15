@@ -1,3 +1,5 @@
+for shuffle in {True,False}
+do
 for num_layers in {3,6,9}
 do
 for d_model in {64,128,256}
@@ -7,7 +9,8 @@ do
 
 python main.py --output_dir output \
                    --name BeijingPM25Quality_fromScratch_Regression \
-                   --records_file Regression_records_train_test.xls \
+                   --date "231215" \
+                   --records_file "231215_Regression_records_train_test.xls" \
                    --data_dir ./BeijingPM25Quality/ \
                    --data_class tsra \
                    --mode train_test \
@@ -17,7 +20,7 @@ python main.py --output_dir output \
                    --epochs 200 \
                    --lr $lr \
                    --batch_size 128 \
-                   --optimizer RAdam \
+                   --optimizer Adam \
                    --pos_encoding learnable \
                    --task regression \
                    --shuffle True \
@@ -26,6 +29,7 @@ python main.py --output_dir output \
                    --dim_feedforward 256\
                    --num_layers $num_layers \
 
+done
 done
 done
 done

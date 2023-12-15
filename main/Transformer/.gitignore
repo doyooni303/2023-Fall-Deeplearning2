@@ -1,5 +1,6 @@
 # folder
-output/*
+*_output/
+output/
 __pycache__/*
 
 # file

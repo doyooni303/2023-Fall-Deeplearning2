@@ -22,6 +22,7 @@ from glob import glob
 
 
 # 3rd party packages
+import pandas as pd
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
@@ -376,6 +377,12 @@ def main(config):
     metrics_names, metrics_values = zip(*aggr_metrics_val.items())
     metrics.append(list(metrics_values))
 
+    # trainin,valid loss comparison
+    loss_dict = {
+        "train": {"epoch": [], "loss": []},
+        "valid": {"epoch": [], "loss": []},
+    }
+
     logging.info("Starting training...")
     for epoch in tqdm(
         range(start_epoch + 1, config["epochs"] + 1), desc="Training Epoch", leave=False
@@ -384,9 +391,11 @@ def main(config):
         epoch_start_time = time.time()
         aggr_metrics_train = trainer.train_epoch(
             epoch
-        )  # dictionary of aggregate epoch metrics
+        )  # dictionary of aggregate epoch metrics :{epoch, loss}
         epoch_runtime = time.time() - epoch_start_time
-        print()
+        for key, value in aggr_metrics_train.items():
+            loss_dict["train"][key].append(value)
+
         print_str = "Epoch {} Training Summary: ".format(epoch)
         for k, v in aggr_metrics_train.items():
             tensorboard_writer.add_scalar("{}/train".format(k), v, epoch)
@@ -426,6 +435,9 @@ def main(config):
             metrics_names, metrics_values = zip(*aggr_metrics_val.items())
             metrics.append(list(metrics_values))
 
+            for key in ["epoch", "loss"]:
+                loss_dict["valid"][key].append(aggr_metrics_val[key])
+
         utils.save_model(
             os.path.join(config["save_dir"], "model_{}.pth".format(mark)),
             epoch,
@@ -459,6 +471,10 @@ def main(config):
     metrics_filepath = os.path.join(
         config["output_dir"], "metrics_" + config["experiment_name"] + ".xls"
     )
+
+    # train-valid loss save
+    loss_path = os.path.join(config["output_dir"], config["loss_dict_path"])
+    pd.DataFrame(loss_dict).to_csv(loss_path, encoding="cp949")
 
     # Test after training
     if config["mode"] == "train_test":
