@@ -52,7 +52,7 @@ def main(args):
     model = model.to(device)
 
     # Training and Save Weights(Parameters)
-    dataloaders_dict = {'train': train_loader, 'val': valid_loader}
+    dataloaders_dict_train = {'train': train_loader, 'val': valid_loader}
 
     criterion = nn.MSELoss()
     optimizer = optim.AdamW(model.parameters(), lr=learning_rate)   # Adam or Adamw
@@ -61,7 +61,7 @@ def main(args):
         trainer = Train_Test_Attention(train_loader, valid_loader, test_loader, input_size, device)
     else:
         trainer = Train_Test(train_loader, valid_loader, test_loader, input_size, device)
-    best_model, train_loss_history, val_loss_history, best_epoch = trainer.train(model, dataloaders_dict, criterion, num_epochs, optimizer)
+    best_model, train_loss_history, val_loss_history, best_epoch = trainer.train(model, dataloaders_dict_train, criterion, num_epochs, optimizer)
 
     os.makedirs(os.path.join(args.ckpt_dir, rnn_type), exist_ok=True)
     best_model_ckpt = os.path.join(best_model_path, f'{args.shuffle, args.rnn_type, args.attention, args.hidden_size, args.num_layers, args.lr, args.bidirectional, args.dropout}')
@@ -73,12 +73,13 @@ def main(args):
     # Evaluation
     model.load_state_dict(torch.load(f'{best_model_ckpt}.pt'))    # Load model weights(Parameters)
 
+    dataloaders_dict_test = {'train': train_loader, 'val': valid_loader, 'test':test_loader}
     if attention:
-        y_pred, y_true, mse, attn_scores = trainer.test(model, test_loader)
+        train_preds, train_y_true, train_attn_scores, val_preds, val_y_true, val_attn_scores, test_preds, test_y_true, test_attn_scores = trainer.test(model, dataloaders_dict_test)
     else:
-        y_pred, y_true, mse = trainer.test(model, test_loader)
+        train_preds, train_y_true, val_preds, val_y_true, test_preds, test_y_true  = trainer.test(model, dataloaders_dict_test)
 
-    performance = return_result(args, y_true, y_pred, best_epoch)
+    performance = return_result(args, train_preds, train_y_true, val_preds, val_y_true, test_preds, test_y_true, best_epoch)
 
 
 if __name__ == "__main__":
@@ -87,18 +88,18 @@ if __name__ == "__main__":
     args.num_epochs = 500
     args.batch_size = 128
 
-    args.attention = True
     args.layer_norm = True
 
     shuffle = [False, True]
-    rnn_type = ['gru']
+    rnn_type = ['lstm','gru']
     hidden_size = [64, 128, 256]
     num_layers = [1,2]
     learning_rate = [0.01, 0.001, 0.0001,]
     # bidirectional = [True, False]
     dropout = [0, 0.2]
+    attention = [True, False]
 
-    combinations = list(product(shuffle, rnn_type, hidden_size, num_layers, learning_rate, dropout))
+    combinations = list(product(shuffle, rnn_type, hidden_size, num_layers, learning_rate, dropout, attention))
 
     for c in tqdm(combinations):
         args.shuffle = c[0]
@@ -107,5 +108,6 @@ if __name__ == "__main__":
         args.num_layers = c[3]
         args.lr = c[4]
         args.dropout = c[5]
+        args.attention = c[6]
 
         main(args)

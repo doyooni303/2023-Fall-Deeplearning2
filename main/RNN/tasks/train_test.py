@@ -87,32 +87,40 @@ class Train_Test():
 
         return model, train_loss_history, val_loss_history, best_epoch
 
-    def test(self, model, test_loader):
+    def test(self, model, dataloaders):
         model.eval()   # 모델을 validation mode로 설정
         
         # test_loader에 대하여 검증 진행 (gradient update 방지)
         with torch.no_grad():
+            for phase in ['train', 'val', 'test']:
 
-            preds = []
-            y_true = []
-            
-            for data in test_loader:
-                inputs = data['X'].to(self.device)
-                targets = data['Y'].to(self.device)
-
-                # forward
-                # input을 model에 넣어 output을 도출
-                pred = model(inputs)
+                preds = []
+                y_true = []
                 
-                preds.extend(pred.detach().cpu().numpy())
-                y_true.extend(targets.detach().cpu().numpy())
+                for data in dataloaders[phase]:
+                    inputs = data['X'].to(self.device)
+                    targets = data['Y'].to(self.device)
 
-            preds = torch.tensor(preds)
-            y_true = torch.tensor(y_true)
+                    # forward
+                    # input을 model에 넣어 output을 도출
+                    pred = model(inputs)
+                    
+                    preds.extend(pred.detach().cpu().numpy())
+                    y_true.extend(targets.detach().cpu().numpy())
+
+                if phase == "train":
+                    train_preds = torch.tensor(preds)
+                    train_y_true = torch.tensor(y_true)
+                if phase == "val":
+                    val_preds = torch.tensor(preds)
+                    val_y_true = torch.tensor(y_true)
+                if phase == "test":
+                    test_preds = torch.tensor(preds)
+                    test_y_true = torch.tensor(y_true)
             
-            mse = nn.MSELoss()(preds, y_true).item()
+            # mse = nn.MSELoss()(preds, y_true).item()
 
-        return preds, y_true, mse
+        return train_preds, train_y_true, val_preds, val_y_true, test_preds, test_y_true 
     
 class Train_Test_Attention():
     def __init__(self,  train_loader, valid_loader, test_loader, input_size, num_classes, device='cuda'): ##### config는 jupyter 파일을 참고
@@ -240,50 +248,42 @@ class Train_Test_Attention():
 
         return model, train_loss_history, val_loss_history, best_epoch  # , attn_scores
 
-    def test(self, model, test_loader):
-        """
-        Predict classes for test dataset based on the trained model
-
-        :param model: best trained model
-        :type model: model
-
-        :param test_loader: test dataloader
-        :type test_loader: DataLoader
-
-        :return: predicted classes
-        :rtype: numpy array
-
-        :return: prediction probabilities
-        :rtype: numpy array
-
-        :return: test accuracy
-        :rtype: float
-        """
+    def test(self, model, dataloaders):
 
         model.eval()   # 모델을 validation mode로 설정
         
         # test_loader에 대하여 검증 진행 (gradient update 방지)
         with torch.no_grad():
+            for phase in ['train', 'val', 'test']:
+                preds = []
+                y_true = []
+                attn_scores = []
 
-            preds = []
-            y_true = []
-            attn_scores = []
-            for data in test_loader:
-                inputs = data['X'].to(self.device)
-                targets = data['Y'].to(self.device)
+                for data in dataloaders[phase]:
+                    inputs = data['X'].to(self.device)
+                    targets = data['Y'].to(self.device)
 
-                # forward
-                # input을 model에 넣어 output을 도출
-                pred, attn_score = model(inputs)
+                    # forward
+                    # input을 model에 넣어 output을 도출
+                    pred, attn_score = model(inputs)
+                    
+                    preds.extend(pred.detach().cpu().numpy())
+                    y_true.extend(targets.detach().cpu().numpy())
+                    attn_scores.extend(attn_score.detach().cpu().tolist())
                 
-                preds.extend(pred.detach().cpu().numpy())
-                y_true.extend(targets.detach().cpu().numpy())
-                attn_scores.extend(attn_score.detach().cpu().tolist())
-                
-            preds = torch.tensor(preds)
-            y_true = torch.tensor(y_true)
-            attn_scores = torch.tensor(attn_scores)
+                if phase == "train":
+                    train_preds = torch.tensor(preds)
+                    train_y_true = torch.tensor(y_true)
+                    train_attn_scores = torch.tensor(attn_scores)
+                if phase == "val":
+                    val_preds = torch.tensor(preds)
+                    val_y_true = torch.tensor(y_true)
+                    val_attn_scores = torch.tensor(attn_scores)
+                if phase == "test":
+                    test_preds = torch.tensor(preds)
+                    test_y_true = torch.tensor(y_true)
+                    test_attn_scores = torch.tensor(attn_scores)
             
-            mse = nn.MSELoss()(preds, y_true).item()
+            # mse = nn.MSELoss()(preds, y_true).item()
             
-        return preds, y_true, mse, attn_scores
+        return train_preds, train_y_true, train_attn_scores, val_preds, val_y_true, val_attn_scores, test_preds, test_y_true, test_attn_scores
