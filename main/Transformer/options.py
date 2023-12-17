@@ -275,7 +275,7 @@ class Options(object):
         self.parser.add_argument(
             "--loss_dict_path",
             type=str,
-            default="./loss_train_valid.csv",
+            default="loss_train_valid.csv",
             help="To track the loss of training and validtion.",
         )
         self.parser.add_argument(

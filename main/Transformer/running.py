@@ -121,6 +121,7 @@ def setup(args):
     output_dir = os.path.join(
         config["output_dir"], "_".join([config["experiment_name"], config["comment"]])
     )
+    config["output_dir"] = output_dir
     os.environ["TZ"] = "Asia/Seoul"
     time.tzset()
 

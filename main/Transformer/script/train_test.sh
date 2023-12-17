@@ -1,5 +1,3 @@
-for shuffle in {True,False}
-do
 for num_layers in {3,6,9}
 do
 for d_model in {64,128,256}
@@ -20,16 +18,15 @@ python main.py --output_dir output \
                    --epochs 200 \
                    --lr $lr \
                    --batch_size 128 \
-                   --optimizer Adam \
+                   --optimizer RAdam \
                    --pos_encoding learnable \
                    --task regression \
-                   --shuffle True \
+                   --shuffle False \
                    --model transformer \
                    --d_model $d_model \
                    --dim_feedforward 256\
                    --num_layers $num_layers \
 
-done
 done
 done
 done
