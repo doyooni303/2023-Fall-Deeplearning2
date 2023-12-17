@@ -181,13 +181,13 @@ def main(config):
         my_data.feature_df.loc[train_indices] = normalizer.normalize(
             my_data.feature_df.loc[train_indices]
         )
-        if not config["normalization"].startswith("per_sample"):
-            # get normalizing values from training set and store for future use
-            norm_dict = normalizer.__dict__
-            with open(
-                os.path.join(config["output_dir"], "normalization.pickle"), "wb"
-            ) as f:
-                pickle.dump(norm_dict, f, pickle.HIGHEST_PROTOCOL)
+        # if not config["normalization"].startswith("per_sample"):
+        #     # get normalizing values from training set and store for future use
+        #     norm_dict = normalizer.__dict__
+        #     with open(
+        #         os.path.join(config["output_dir"], "normalization.pickle"), "wb"
+        #     ) as f:
+        #         pickle.dump(norm_dict, f, pickle.HIGHEST_PROTOCOL)
     if normalizer is not None:
         if len(val_indices):
             val_data.feature_df.loc[val_indices] = normalizer.normalize(
@@ -379,8 +379,9 @@ def main(config):
 
     # trainin,valid loss comparison
     loss_dict = {
-        "train": {"epoch": [], "loss": []},
-        "valid": {"epoch": [], "loss": []},
+        "epoch": [],
+        "train_loss": [],
+        "valid_loss": [],
     }
 
     logging.info("Starting training...")
@@ -393,8 +394,8 @@ def main(config):
             epoch
         )  # dictionary of aggregate epoch metrics :{epoch, loss}
         epoch_runtime = time.time() - epoch_start_time
-        for key, value in aggr_metrics_train.items():
-            loss_dict["train"][key].append(value)
+        loss_dict["epoch"].append(aggr_metrics_train["epoch"])
+        loss_dict["train_loss"].append(aggr_metrics_train["loss"])
 
         print_str = "Epoch {} Training Summary: ".format(epoch)
         for k, v in aggr_metrics_train.items():
@@ -435,8 +436,7 @@ def main(config):
             metrics_names, metrics_values = zip(*aggr_metrics_val.items())
             metrics.append(list(metrics_values))
 
-            for key in ["epoch", "loss"]:
-                loss_dict["valid"][key].append(aggr_metrics_val[key])
+            loss_dict["valid_loss"].append(aggr_metrics_val["loss"])
 
         utils.save_model(
             os.path.join(config["save_dir"], "model_{}.pth".format(mark)),
@@ -471,10 +471,13 @@ def main(config):
     metrics_filepath = os.path.join(
         config["output_dir"], "metrics_" + config["experiment_name"] + ".xls"
     )
+    book = utils.export_performance_metrics(
+        metrics_filepath, metrics, header, sheet_name="metrics"
+    )
 
     # train-valid loss save
     loss_path = os.path.join(config["output_dir"], config["loss_dict_path"])
-    pd.DataFrame(loss_dict).to_csv(loss_path, encoding="cp949")
+    pd.DataFrame(loss_dict).to_csv(loss_path, encoding="cp949", index=False)
 
     # Test after training
     if config["mode"] == "train_test":
